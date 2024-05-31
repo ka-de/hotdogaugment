@@ -49,7 +49,7 @@ def smooth_color_transitions(input_image: np.ndarray) -> np.ndarray:
     return cv2.bilateralFilter(input_image, diameter, sigma_color, sigma_space)
 
 
-def segment_characters(input_image: np.ndarray, padding: int = 20) -> np.ndarray:
+def segment_characters(image: np.ndarray, padding: int = 20) -> np.ndarray:
     """
     Segment characters or text regions from an input image.
     Args:
@@ -58,36 +58,18 @@ def segment_characters(input_image: np.ndarray, padding: int = 20) -> np.ndarray
     Returns:
         np.ndarray: The segmented image with characters or text regions highlighted.
     """
-    input_image = cv2.fastNlMeansDenoisingColored(
-        input_image,
-        None,
-        random.randint(5, 15),
-        random.randint(5, 15),
-        random.randint(5, 10),
-        random.randint(15, 25),
-    )
-
+    image = cv2.fastNlMeansDenoisingColored(image, None, 10, 10, 7, 21)
     image_padded = cv2.copyMakeBorder(
-        input_image,
-        padding,
-        padding,
-        padding,
-        padding,
-        cv2.BORDER_CONSTANT,
-        value=[0, 0, 0],
+        image, padding, padding, padding, padding, cv2.BORDER_CONSTANT, value=[0, 0, 0]
     )
     gray = cv2.cvtColor(image_padded, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(
-        gray,
-        (random.choice(range(5, 16, 2)), random.choice(range(5, 16, 2))),
-        random.randint(10, 20),
-    )
-    gray = cv2.medianBlur(gray, random.choice(range(3, 10, 2)))
+    gray = cv2.GaussianBlur(gray, (9, 9), 15)
+    gray = cv2.medianBlur(gray, 7)
     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = [
         cv2.approxPolyDP(
-            contour, random.uniform(0.2, 0.35) * cv2.arcLength(contour, True), True
+            contour, random.uniform(0.3, 0.35) * cv2.arcLength(contour, True), True
         )
         for contour in contours
     ]  # Contour Smoothing
@@ -98,8 +80,8 @@ def segment_characters(input_image: np.ndarray, padding: int = 20) -> np.ndarray
         output[y : y + h, x : x + w] = cv2.bitwise_and(roi, roi)
     output_no_padding = output[padding:-padding, padding:-padding]
     guide = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    radius = random.randint(4, 6)
-    eps = random.randint(10, 15)
+    radius = random.randint(4, 10)
+    eps = random.randint(10, 30)
     output_no_padding = ximgproc.guidedFilter(
         guide, output_no_padding, radius=radius, eps=eps, dDepth=-1
     )
@@ -135,20 +117,23 @@ image_files = (
 )
 
 for image_file in image_files:
-    print(f"Processing {image_file}...")
+    # Read the image file
     image = cv2.imread(image_file)
-    print("Segmenting characters...")
+
+    # Process the image
     segmented = segment_characters(image, 50)
     cv2.imwrite(f"segmented_{os.path.basename(image_file)}", segmented)
-    print("Applying color augmentation...")
+
     augmented_image = color_aug(image, segmented, 300)
-    print("Smoothing color transitions...")
+    # cv2.imwrite(f"augmented_{os.path.basename(image_file)}", augmented_image)
+
     smoothed_image = smooth_color_transitions(image)
+    # cv2.imwrite(f"smoothed_{os.path.basename(image_file)}", smoothed_image)
+
     smoothed_augmented_image = smooth_color_transitions(augmented_image)
     cv2.imwrite(
         f"smoothed_augmented_{os.path.basename(image_file)}", smoothed_augmented_image
     )
-    print(f"Finished processing {image_file}.\n")
 
 end_time = time.time()
 execution_time = end_time - start_time
