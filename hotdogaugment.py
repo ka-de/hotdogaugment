@@ -69,7 +69,11 @@ def segment_characters(image: np.ndarray, padding: int = 20) -> np.ndarray:
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     contours = [
         cv2.approxPolyDP(
-            contour, random.uniform(0.3, 0.35) * cv2.arcLength(contour, True), True
+            contour,
+            # 1% chance the segmentation mask gets returned all black.
+            (0.5 if random.random() <= 0.01 else random.uniform(0.3, 0.35))
+            * cv2.arcLength(contour, True),
+            True,
         )
         for contour in contours
     ]  # Contour Smoothing
